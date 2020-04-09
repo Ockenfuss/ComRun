@@ -1,0 +1,15 @@
+#!/bin/bash -l
+#SBATCH --ntasks-per-node={{var.tasks}}
+#SBATCH --nodes={{var.nodes}}
+#SBATCH --array={{var.jobs}}%{{var.parallel_jobs}}
+#SBATCH --partition=cluster,met-ws
+#SBATCH --mem={{var.mem}}
+#SBATCH --time={{var.time}}
+#SBATCH --output={{var.stdout}}
+#SBATCH --error={{var.stderr}}
+ 
+# load modules
+ 
+# perform the actual work
+echo "Current slurm task is $SLURM_ARRAY_TASK_ID ...">&2
+/usr/bin/time -f "###Runtime %e %U %S ###" {{var.uvspec}} < {{var.inputfiles}}

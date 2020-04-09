@@ -1,0 +1,3 @@
+#!/bin/sh
+
+/usr/bin/time -f "###Runtime %e %U %S ###" uvspec < examples/Run12345_{{var.chunk}}_0.inp  2>examples/Run12345_stderr_{{var.chunk}}_0.dat 1>examples/Run12345_stdout_{{var.chunk}}_0.dat
