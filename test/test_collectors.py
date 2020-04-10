@@ -17,7 +17,7 @@ class OutputTest(ut.TestCase):
         out=Output(variables)
 
         #Add new variable
-        state={'state1':[1], 'state2':[4]}
+        state={'state1':1, 'state2':4}
         new=xr.DataArray([1,2], coords=[('wvl', [400,500])])
         new.name='radiance'
         out.add_data(new, state)
@@ -25,7 +25,7 @@ class OutputTest(ut.TestCase):
         npt.assert_array_equal(out.data['radiance'].sel(state1=1, state2=4, wvl=[400,500]).values, [1,2])
 
         #Update with a new state
-        state2={'state1':[2], 'state2':[4]}
+        state2={'state1':2, 'state2':4}
         new2=xr.DataArray([10,20], coords=[('wvl', [400,500])])
         new2.name='radiance'
         out.add_data(new2, state2)
@@ -33,7 +33,7 @@ class OutputTest(ut.TestCase):
         npt.assert_array_equal(out.data['radiance'].sel(state1=2, state2=4, wvl=[400,500]).values, [10,20])
 
         #Update with a new state that extends the dimensions
-        state2={'state1':[2], 'state2':[4]}
+        state2={'state1':2, 'state2':4}
         new2=xr.DataArray([30,40], coords=[('wvl', [2100,2200])])
         new2.name='radiance'
         out.add_data(new2, state2)
@@ -43,7 +43,7 @@ class OutputTest(ut.TestCase):
         npt.assert_array_equal(out.data['radiance'].sel(state1=1, state2=4, wvl=[2100,2200]).values, [np.nan,np.nan])
 
         #Update with an array that extends the dimensions partially
-        state2={'state1':[1], 'state2':[4]}
+        state2={'state1':1, 'state2':4}
         new2=xr.DataArray([0.1,0.2], coords=[('wvl', [500,3000])])
         new2.name='radiance'
         out.add_data(new2, state2)
@@ -56,14 +56,14 @@ class OutputTest(ut.TestCase):
         out=Output(variables)
 
         #Add new variable
-        state={'state1':['abc'], 'state2':[4]}
+        state={'state1':'abc', 'state2':4}
         new=xr.DataArray(["a", "xyz"], coords=[('wvl', [400,500])])
         new.name='radiance'
         out.add_data(new, state)
         self.assertTrue('radiance' in out.data.variables)
         npt.assert_array_equal(out.data['radiance'].sel(state1='abc', state2=4, wvl=[400,500]).values, ['a','xyz'])
         #Update with an array that extends the dimensions partially
-        state2={'state1':['abc'], 'state2':[4]}
+        state2={'state1':'abc', 'state2':4}
         new2=xr.DataArray(['c', 'd'], coords=[('wvl', [500,3000])])
         new2.name='radiance'
         out.add_data(new2, state2)
@@ -75,7 +75,7 @@ class OutputTest(ut.TestCase):
         out=Output(variables, tied=[['state1', 'state2']])
 
         #Add new variable
-        state={'state1':[1]}
+        state={'state1':1}
         new=xr.DataArray([1,2], coords=[('wvl', [400,500])])
         new.name='radiance'
         out.add_data(new, state)
