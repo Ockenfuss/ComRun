@@ -1,0 +1,13 @@
+data_files_path /project/meteo/work/Paul.Ockenfuss/Software/libRadtran/data
+
+
+rte_solver disort
+
+sza 0 
+phi 0
+phi0 0
+umu {{var.umu}}
+zout sur
+wavelength {{var.wvl}}
+
+quiet

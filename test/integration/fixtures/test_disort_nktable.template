@@ -1,0 +1,16 @@
+data_files_path /project/meteo/work/Paul.Ockenfuss/Software/libRadtran/data
+
+
+rte_solver disort
+
+sza {{var.sza}}
+phi0 0
+phi {{var.phi}}
+umu {{var.umu}}
+zout 10
+wavelength {{var.wvl_range}}
+
+wc_file 1D test/integration/temp/Runwc{{var.state}}.dat
+wc_properties mie interpolate
+
+quiet
