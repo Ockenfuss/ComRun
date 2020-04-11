@@ -58,7 +58,9 @@ class Scheduler(object):
         iterables=[self.variables[v] for v in untied]+[zip( *[self.variables[v] for v in group]) for group in self.tied]#generate a combined iterable for all tied variables 
         for com in it.product(*iterables):
             com=Scheduler.nflatten(com)#Resolve the tuples from the combined iterables
-            yield dict(zip(allkeys, com))
+            state=dict(zip(allkeys, com))
+            majorstate={k:state[k] for k in majorkeys}
+            yield state, majorstate
 
 class Template(object):
     def __init__(self, templatefile, savepath):
@@ -105,7 +107,10 @@ class TemplateHandler(object):
         assert(len(temppaths)==len(savepaths))
         if not names:
             names=np.arange(len(temppaths))
-        self.templates={names[i]:Template.fromFilepath(tp,savepaths[i]) for i, tp in enumerate(temppaths)}
+        self.templates={}
+        for i, tp in enumerate(temppaths):
+            if tp:
+                self.templates[names[i]]=Template.fromFilepath(tp, savepaths[i])
         self.counter=len(self.templates)
 
     def create(self, state, names=None, chunkid=None, taskid=None):
@@ -122,6 +127,9 @@ class TemplateHandler(object):
         self.templates[name]=Template.fromFilepath(temppath, savepath)
         self.counter+=1
 
+def exe(command):
+    proc=subprocess.Popen(command, shell=True)
+    proc.wait()
 def main():
     from MyPython import Input as InputLogger
     import argparse
@@ -129,30 +137,34 @@ def main():
     par.add_argument('infile')
     args=par.parse_args()
     def_opts={}
-    def_opts["Options"]={"idnumber":str(int(np.random.rand()*1e10)), "uvspec":"uvspec", "sep":",", "not_cartesian":"", "mode":"local","misctemplate":"","miscfiles":"","info":"info", "slurmtemplate":"/project/meteo/work/Paul.Ockenfuss/Master/Simulation/Sourcecode/Tools/Templates/Slurm_Input_template.template"}
+    def_opts["Options"]={"idnumber":str(int(np.random.rand()*1e10)), "uvspec":"uvspec", "sep":",", "not_cartesian":"", "mode":"local","misctemplates":'',"miscfiles":"","info":"info", "slurmtemplate":"/project/meteo/work/Paul.Ockenfuss/Master/Simulation/Sourcecode/Tools/Templates/Slurm_Input_template.template"}
     inp=InputLogger.Input(args.infile,version=VERSION, def_opts=def_opts)
-    inp.convert_array(str, "misctemplate", "Options", removeSpaces=True)
+    inp.convert_array(str, "misctemplates", "Options", removeSpaces=True)
     inp.convert_array(str, "miscfiles", "Options", removeSpaces=True)
     inp.convert_array(str, "out_values","Output", removeSpaces=True)
     inp.convert_array(str, "not_cartesian", "Options", removeSpaces=True)
     inp.convert_type(int, 'chunksize', 'Options')
-
     variables={}
     for var in inp.listKeys("Variables"):
         inp.convert_array(str, var,section="Variables", removeSpaces=False, sep=inp.get("sep", 'Options'))
         variables[var]=inp.get(var, "Variables")
     tied=[inp.get("not_cartesian",'Options')]
-    if inp.get("not_cartesian",'Options')[0]=="":
+    if not inp.get("not_cartesian",'Options'):
         tied=[]
     runstate=inp.options['Run']
 
 
     mode=inp.get('mode', 'Options')
-    template_handler=TemplateHandler(inp.get('templates', 'Options'), inp.get('inputfiles', 'Options'))
+    infodict={'quiet':0, 'info':1, 'verbose':2}
+    info=infodict[inp.get('info', 'Options')]
+    misctemplates=inp.get('misctemplates', 'Options')
+    intemplate=inp.get('intemplate', 'Options')
+    template_handler=TemplateHandler(misctemplates, inp.get('miscfiles', 'Options'))
+    template_handler.add_template(intemplate, inp.get('inputfile', 'Options'), 'input')
     runtemplate_handler=TemplateHandler(inp.get('runtemplate', 'Options'), inp.get('runfile', 'Options'), 'Run')
     if mode=='local':
         runner=LocalRunner()
-        collector=UvspecCollector(inp.get("stdout", 'Options'), inp.get("stderr", 'Options'), inp.get("inputfiles", 'Options'), inp.get("out_values", 'Output'), variables, tied)
+        collector=UvspecCollector(inp.get("stdout", 'Options'), inp.get("stderr", 'Options'), inp.get("inputfile", 'Options'),inp.get("miscfiles", 'Options'), inp.get("out_values", 'Output'), variables, tied)
     elif mode=='create':
         runner=EmptyRunner()
         collector=EmptyCollector()
@@ -172,7 +184,7 @@ def main():
         taskid=0
         while taskid<chunksize:
             try:
-                state=next(states_creation)
+                state, _=next(states_creation)
             except StopIteration:
                 chunks_remaining=False
                 break
@@ -182,20 +194,29 @@ def main():
             break
         runstate['jobs']=str(taskid)
         runfile=runtemplate_handler.create(runstate, chunkid=chunkid)[0]
+        if info>0:
+            print(f'Running chunk {chunkid} with {taskid} jobs')
+            if info>1:
+                print(f'Current state is {state}')
         runner.run(runfile)
         runner.wait()
         taskid=0
         while taskid<chunksize:
             try:
-                state=next(states_reading)
-                print(state)
+                _, majorstate=next(states_reading)
             except StopIteration:
                 chunks_remaining=False
                 break
-            collector.collect(state, chunkid, taskid)
+            collector.collect(majorstate, chunkid, taskid)
             taskid+=1
+        collector.output.save_snapshot(inp.get('outputfile', 'Options'))
+        if mode=='local' or mode=='slurm':
+            exe(inp.get("clean",'Options'))
         chunkid+=1
+    collector.save(inp.get('outputfile', 'Options'), inp, [intemplate]+misctemplates)
     print(collector.output.data)
+        # if chunkid==2:
+        #     sys.exit()
 
 
 

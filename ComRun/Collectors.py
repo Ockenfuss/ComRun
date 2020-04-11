@@ -2,6 +2,7 @@ import xarray as xr
 import re as reg
 import numpy as np
 from ComRun.Helperfunctions import append_ids
+import os
 
 
 class Output(object):
@@ -35,14 +36,28 @@ class Output(object):
         if not new.name in self.data:
             self.data[new.name]=new
         else:
-            self.data=new.combine_first(self.data)
+            temp=new.combine_first(self.data[new.name])# use combine_first because it allows for coordinate alignment and extends is necessary
+            self.data=xr.merge([temp, self.data], compat='override')#now, merge the new data array in the full dataset
+
+    def save_snapshot(self, savefile):
+        self.data.to_netcdf(savefile)
+
+
+
+    def save(self, savefile, inpLogger, templates=None):
+        self.save_snapshot(savefile)
+        inpLogger.add_outfile(savefile)
+        logfile=os.path.splitext(savefile)[0]+".log"
+        inpLogger.write_log(logfile, old_logs=templates)
+
 
 
 class Collector(object):
-    def __init__(self, stdout, stderr, infiles, collection_keys, variables, tied=[]):
+    def __init__(self, stdout, stderr, infile, miscfiles, collection_keys, variables, tied=[]):
         self.stdoutbase=stdout
         self.stderrbase=stderr
-        self.infilesbase=infiles
+        self.infilebase=infile
+        self.miscfilesbase=miscfiles
         self.collection_keys=collection_keys
         self.output=Output(variables, tied)
 
@@ -51,25 +66,32 @@ class Collector(object):
             data=file.read()
         return data
 
+    def save(self, savefile, inpLogger, templates=None):
+        self.output.save(savefile, inpLogger, templates)
+
 class EmptyCollector(Collector):
     def __init__(self):
-        super().__init__(None, None, None, None, {}, [])
+        super().__init__(None, None, None,None, None, {}, [])
     
     def collect(self, state, chunkid, taskid):
         pass
+
+    def save(self, a1, a2, a3):
+        pass
     
 class UvspecCollector(Collector):
-    def __init__(self, stdout, stderr, infiles, collection_keys, variables, tied=[]):
-        super().__init__(stdout, stderr, infiles, collection_keys, variables, tied=[])
+    def __init__(self, stdout, stderr, infile,miscfiles, collection_keys, variables, tied=[]):
+        super().__init__(stdout, stderr, infile, miscfiles, collection_keys, variables, tied=[])
         self.extraction_functions={"time_all":self.get_time_all, "radiance": self.get_radiance, "photons_second": self.get_photons_second, "radiance_std": self.get_radiance_std, "radiance_dis": self.get_radiance_dis, "dis_std":self.get_dis_std, "mie_all":self.get_mie_std}
 
 
-    def collect(self, state, chunkid, taskid):
+    def collect(self, cartesian_state, chunkid, taskid):
         self.stdoutfile=append_ids(self.stdoutbase, chunkid, taskid)
         self.stderrfile=append_ids(self.stderrbase, chunkid, taskid)
-        self.infiles=[append_ids(f, chunkid, taskid) for f in self.infilesbase]
+        self.miscfiles=[append_ids(f, chunkid, taskid) for f in self.miscfilesbase]
+        self.infile=append_ids(self.infilebase,chunkid, taskid)
         for key in self.collection_keys:
-            self.output.add_data(self.extraction_functions[key](), state)
+            self.output.add_data(self.extraction_functions[key](), cartesian_state)
 
     def get_basename(self):
         """Get the parameter value of "mc_basename" in a uvspec input file
@@ -80,15 +102,12 @@ class UvspecCollector(Collector):
         Returns:
             str -- the value of mc_basename
         """
-        for infile in self.infiles:
-            content=self.open_file(infile)
-            basename=reg.findall(r"mc_basename [^\n]*", content)
-            if len(basename)>0:
-                basename=basename[-1]#last line
-                return basename.split(" ")[1]#last word
-            else:
-                continue
-        raise Exception(f"mc_basename not found in any of the files {self.infiles}!")
+        content=self.open_file(self.infile)
+        basename=reg.findall(r"mc_basename [^\n]*", content)
+        if len(basename)>0:
+            basename=basename[-1]#last line
+            return basename.split(" ")[1]#last word
+        raise Exception(f"mc_basename not found in any of the files {self.infile}!")
 
 
     def get_time_all(self):
@@ -123,8 +142,8 @@ class UvspecCollector(Collector):
         #...
         #The strategy is to locate the philines and derive the structure of the rest from these points
         stdout=self.open_file(self.stdoutfile)
-        lines=stdout.split('\n')
-        data=[np.fromstring(lines[i], sep=' ', dtype=float) for i in range(len(lines))]
+        lines=stdout.split('\n')[:-1]
+        data=[np.atleast_1d(np.fromstring(lines[i], sep=' ', dtype=float)) for i in range(len(lines))]
         rad_phi=data[1]
         n_phi=len(rad_phi)
         if n_phi==7:
