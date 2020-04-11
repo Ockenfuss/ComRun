@@ -11,7 +11,7 @@ class OutputTest(ut.TestCase):
         out=Output(variables, tied)
         self.assertCountEqual(out.data.dims, ['state1', 'state2', 'state4'])
         self.assertEqual(out.data['state3'].dims[0], 'state1')
-    
+
     def test_add(self):
         variables={'state1':[1,2], 'state2':[3,4]}
         out=Output(variables)
@@ -67,10 +67,11 @@ class OutputTest(ut.TestCase):
         new2=xr.DataArray(['c', 'd'], coords=[('wvl', [500,3000])])
         new2.name='radiance'
         out.add_data(new2, state2)
+        print(out.data)
         npt.assert_array_equal(out.data['radiance'].sel(state1='abc', state2=4, wvl=[400,500]).values, ['a','c'])
         npt.assert_array_equal(out.data['radiance'].sel(state1='abc', state2=4, wvl=[500,3000]).values, ['c','d'])
 
-    def test_add_groups(self):
+    def test_add_tied(self):
         variables={'state1':[1,2], 'state2':[3,4]}
         out=Output(variables, tied=[['state1', 'state2']])
 
@@ -82,3 +83,48 @@ class OutputTest(ut.TestCase):
         self.assertCountEqual(list(out.data.coords), ['state1', 'state2', 'wvl'])
         self.assertCountEqual(list(out.data.dims), ['state1', 'wvl'])
         self.assertCountEqual(list(out.data['radiance'].dims), ['state1', 'wvl'])
+
+    def test_add_multiple_variables(self):
+        variables={'state1':[1,2], 'state2':[3,4]}
+        out=Output(variables)
+
+        #Add new radiance variable
+        state={'state1':1, 'state2':4}
+        new=xr.DataArray([1,2], coords=[('wvl', [400,500])])
+        new.name='radiance'
+        out.add_data(new, state)
+        self.assertTrue('radiance' in out.data.variables)
+        npt.assert_array_equal(out.data['radiance'].sel(state1=1, state2=4, wvl=[400,500]).values, [1,2])
+        self.assertCountEqual(out.data['radiance'].coords.keys(), ['state1', 'state2', 'wvl'])
+
+        #Add second time variable
+        state={'state1':1, 'state2':4}
+        new=xr.DataArray([0.1,0.2], coords=[('type', ['wall','user'])])
+        new.name='time'
+        out.add_data(new, state)
+        self.assertTrue('time' in out.data.variables)
+        self.assertCountEqual(out.data['time'].coords.keys(), ['state1', 'state2', 'type'])
+        # npt.assert_array_equal(out.data['radiance'].sel(state1=1, state2=4, wvl=[400,500]).values, [1,2])
+
+
+        #Update radiance with a new state
+        state2={'state1':2, 'state2':4}
+        new2=xr.DataArray([10,20], coords=[('wvl', [400,500])])
+        new2.name='radiance'
+        out.add_data(new2, state2)
+        self.assertCountEqual(out.data['time'].coords.keys(), ['state1', 'state2', 'type'])
+        npt.assert_array_equal(out.data['radiance'].sel(state1=1, state2=4, wvl=[400,500]).values, [1,2])
+        npt.assert_array_equal(out.data['radiance'].sel(state1=2, state2=4, wvl=[400,500]).values, [10,20])
+
+        #Update time with a new state
+        state2={'state1':1, 'state2':3}
+        new2=xr.DataArray([0.3,0.4], coords=[('type', ['wall','user'])])
+        new2.name='time'
+        out.add_data(new2, state2)
+        self.assertCountEqual(out.data['time'].coords.keys(), ['state1', 'state2', 'type'])
+        npt.assert_array_equal(out.data['time'].sel(state1=1, state2=4, type=['wall', 'user']).values, [0.1,0.2])
+        npt.assert_array_equal(out.data['time'].sel(state1=1, state2=3, type=['wall', 'user']).values, [0.3, 0.4])
+
+if __name__=="__main__":
+    test=OutputTest()
+    test.test_add_str()
