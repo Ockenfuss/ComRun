@@ -31,6 +31,19 @@ class DisortTests(ut.TestCase):
         outfile='test/integration/temp/test_disort_nktable.nc'
         run(inifile)
         sub.run(f'make -C test/integration/temp/ cleanall', shell=True)
+    def test_disort_ocean(self):
+        result=np.genfromtxt('test/integration/fixtures/Ocean/Results.dat')
+        inifile='test/integration/fixtures/Ocean/test_disort_ocean.ini'
+        outfile='test/integration/temp/test_disort_ocean.nc'
+        run(inifile)
+        data=xr.open_dataset(outfile)
+        data=data['standard_dis']
+        data=data.squeeze()
+        albedo=data.sel(quantity_dis='dis_eup')/(data.sel(quantity_dis='dis_edir')+data.sel(quantity_dis='dis_edn'))
+        albedo=albedo.sel(rad_wvl=result[:,0])
+        npt.assert_allclose(albedo, result[:,1])
+        sub.run(f'make -C test/integration/temp/ cleanall', shell=True)
+
         
 
         

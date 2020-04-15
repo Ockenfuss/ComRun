@@ -1,0 +1,9 @@
+data_files_path /project/meteo/work/Paul.Ockenfuss/Software/libRadtran/data
+source solar
+
+sza {{var.sza}}
+wavelength 400 2500
+
+brdf_cam u10 {{var.wind_speed}}
+
+quiet

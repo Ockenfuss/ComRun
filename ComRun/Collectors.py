@@ -166,7 +166,86 @@ class UvspecCollector(Collector):
         return result
 
     def get_dis_std(self):
-        pass
+        """Read the seven standard output values from uvspec disort output"""
+        stdout=self.open_file(self.stdoutfile)
+        lines=stdout.split('\n')[:-1]
+        data=[np.fromstring(lines[i], sep=' ', dtype=float) for i in range(len(lines))]
+        assert(len(data[0])==7)#First line
+        if len(data)<4 or len(data[0])==len(data[1])==len(data[2]):#no radiance
+            n_wvl=len(data)-1
+            headlines=range(n_wvl)#Indices of the standard output line of disort
+        else:
+            rad_phi=data[1]
+            n_phi=len(rad_phi)
+            if n_phi==7:
+                print("Error: output not unique if 7 phi angles are specified!")
+            assert(n_phi!=7)
+            data_lengths=np.array([len(data[i]) for i in range(len(data))])
+            philines=np.where(data_lengths==n_phi)[0]
+            headlines=philines-1
+            n_wvl=len(headlines)
+        rad_wvl=[data[i][0] for i in headlines]
+
+        dis_edir=np.zeros((n_wvl))
+        dis_edn=np.zeros((n_wvl))
+        dis_eup=np.zeros((n_wvl))
+        dis_uavgdir=np.zeros((n_wvl))
+        dis_uavgdn=np.zeros((n_wvl))
+        dis_uavgup=np.zeros((n_wvl))
+
+        for i in range(n_wvl):
+            dis_edir[i]=data[headlines[i]][1]
+            dis_edn[i]=data[headlines[i]][2]
+            dis_eup[i]=data[headlines[i]][3]
+            dis_uavgdir[i]=data[headlines[i]][4]
+            dis_uavgdn[i]=data[headlines[i]][5]
+            dis_uavgup[i]=data[headlines[i]][6]
+        
+        disort_output=np.row_stack((dis_edir, dis_edn, dis_eup, dis_uavgdir, dis_uavgdn, dis_uavgup))
+        result=xr.DataArray(disort_output, coords=[('quantity_dis', ['dis_edir', 'dis_edn', 'dis_eup', 'dis_uavgdir', 'dis_uavgdn', 'dis_uavgup']),('rad_wvl', rad_wvl)])
+        result.name='standard_dis'
+        return result
+
+        #Create dimension if necessary
+        # if not ('rad_wvl' in output.dims):
+        #     output.coords['rad_wvl']=('rad_wvl', rad_wvl)
+        # #create DataArray if necessary
+        # if not ('dis_edir' in output):
+        #     dims=tuple(np.append(list(act_state.keys()), ['rad_wvl']))
+        #     val_space_shape=tuple([output.dims[d] for d in dims])
+        #     output['dis_edir']=(dims, np.zeros(val_space_shape))
+        # output['dis_edir'][act_state]=dis_edir
+
+        # if not ('dis_edn' in output):
+        #     dims=tuple(np.append(list(act_state.keys()), ['rad_wvl']))
+        #     val_space_shape=tuple([output.dims[d] for d in dims])
+        #     output['dis_edn']=(dims, np.zeros(val_space_shape))
+        # output['dis_edn'][act_state]=dis_edn
+
+        # if not ('dis_eup' in output):
+        #     dims=tuple(np.append(list(act_state.keys()), ['rad_wvl']))
+        #     val_space_shape=tuple([output.dims[d] for d in dims])
+        #     output['dis_eup']=(dims, np.zeros(val_space_shape))
+        # output['dis_eup'][act_state]=dis_eup
+
+        # if not ('dis_uavgdir' in output):
+        #     dims=tuple(np.append(list(act_state.keys()), ['rad_wvl']))
+        #     val_space_shape=tuple([output.dims[d] for d in dims])
+        #     output['dis_uavgdir']=(dims, np.zeros(val_space_shape))
+        # output['dis_uavgdir'][act_state]=dis_uavgdir
+
+        # if not ('dis_uavgdn' in output):
+        #     dims=tuple(np.append(list(act_state.keys()), ['rad_wvl']))
+        #     val_space_shape=tuple([output.dims[d] for d in dims])
+        #     output['dis_uavgdn']=(dims, np.zeros(val_space_shape))
+        # output['dis_uavgdn'][act_state]=dis_uavgdn
+
+        # if not ('dis_uavgup' in output):
+        #     dims=tuple(np.append(list(act_state.keys()), ['rad_wvl']))
+        #     val_space_shape=tuple([output.dims[d] for d in dims])
+        #     output['dis_uavgup']=(dims, np.zeros(val_space_shape))
+        # output['dis_uavgup'][act_state]=dis_uavgup
+
     def get_mie_std(self):
         pass
     
