@@ -1,3 +1,9 @@
 #!/bin/sh
 
-/usr/bin/time -f "###Runtime %e %U %S ###" uvspec < examples/Run12345_{{var.chunk}}_0.inp  2>examples/Run12345_stderr_{{var.chunk}}_0.dat 1>examples/Run12345_stdout_{{var.chunk}}_0.dat
+inputfile=$(echo '{{var.inputfile}}' | gawk '{match($0, "(^.*)\\.(.*$)", a); print a[1] "_{{var.chunk}}_0." a[2]}')
+stdout=$(echo '{{var.stdout}}' | gawk '{match($0, "(^.*)\\.(.*$)", a); print a[1] "_{{var.chunk}}_0." a[2]}')
+stderr=$(echo '{{var.stderr}}' | gawk '{match($0, "(^.*)\\.(.*$)", a); print a[1] "_{{var.chunk}}_0." a[2]}')
+# echo $inputfile
+# echo $stderr
+# echo $stdout
+/usr/bin/time -f "###Runtime %e %U %S ###" uvspec <  $inputfile 2>$stderr 1>$stdout

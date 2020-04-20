@@ -1,14 +1,17 @@
 [Options]
 #Optionally, you may define additional options just for convenience
-working_directory=examples/
+working_directory=test/integration/temp/
+fixtures=test/integration/fixtures/
 
 #The file with the uvspec input template
-templates=${working_directory}Example.template
-runtemplate=${working_directory}RunLocal.template
+intemplate=${fixtures}test_disort_nktable.template
+misctemplates=${fixtures}test_disort_nktable_wc.template
+runtemplate=${fixtures}RunLocal.template
 
 #The filled templates, stderr and stdout will be stored here (temporarily)
-inputfiles=${working_directory}Run${Options:idnumber}.inp
+inputfile=${working_directory}Run${Options:idnumber}.inp
 runfile=${working_directory}Run${Options:idnumber}.sh
+miscfiles=${working_directory}Runwc.dat
 stdout=${working_directory}Run${Options:idnumber}_stdout.dat
 stderr=${working_directory}Run${Options:idnumber}_stderr.dat
 
@@ -16,41 +19,48 @@ stderr=${working_directory}Run${Options:idnumber}_stderr.dat
 mode=local
 
 #The following command will be executed after all simulations are finished
-clean=make clean
-#make -C ${working_directory} clean
+clean=make -C ${working_directory} cleanrun --quiet
+#clean=echo no cleaning
 
 #The final output file, containing the quantities from the "Output" section
-outputfile=${working_directory}Testoutput.nc
+outputfile=${working_directory}test_disort_nktable.nc
 
 #IDnumber: If not set, a 10 digit random number is generated
-idnumber=12345
+idnumber=324789
 
 #separator used to separate Variable values. Default is ','
 #sep=,
 
 #these variables are varied together, i.e. no cartesian product is formed between them.
 #Therefore, they all must have the same number of elements!
-# not_cartesian=
+not_cartesian=umu, phi, sza, state
+info=info
 
 chunksize=1
 
-#######Section with the parameters which are inserted in the uvspec input#######
-#TASKID and CHUNKID are special terms which are replaced by the task and chunk number in every input
+
 [Variables]
-wvl_range=600 700, 1200 1300, 1600 1700, 2100 2200
-basename=${Options:working_directory}testwc.dat
+#######Section with the parameters which are inserted in the program input#######
+#TASKID and CHUNKID are special terms which are replaced by the task and chunk number in every input
+wvl_range=620 660, 2100 2200
+umu=1.0
+phi=0
+sza=30
+state=_CHUNKID_TASKID
+lwc=0.1, 0.2
+reff=10,12
 
 [Run]
+#######Section with the parameters which are inserted in the program execution file. It is expected that this file runs all tasks in one chunk#######
 #CHUNKID is replaced by the chunknumber
-mem=1G
-time=00:10:00
-nodes=2
-tasks=4
-parallel_jobs=8
+#Additionally, the variables tasks (number of tasks in chunk) is provided.
 chunk=CHUNKID
+inputfile=${Options:inputfile}
+stderr=${Options:stderr}
+stdout=${Options:stdout}
+
 
 
 #####Section which specifies the desired output#######
 [Output]
 out_values=time_all, radiance_dis
-#, photons_second, radiance, 

@@ -8,7 +8,8 @@ import subprocess
 from ComRun.Helperfunctions import append_ids
 from ComRun.Collectors import UvspecCollector, EmptyCollector
 from collections import Iterable
-
+import re
+import time
 VERSION="1.0.0"
 
 class RunController(object):
@@ -21,7 +22,26 @@ class LocalRunner(RunController):
         self.result=self.process.wait()
 
 class SlurmRunner(RunController):
-    pass
+    def run(self, runfile):
+        self.runfile=runfile
+        subprocess.call(f'sbatch {runfile}', shell=True)
+    
+    def wait(self):
+        waittime=30
+        while(True):
+            time.sleep(waittime)
+            if self.finished():
+                break
+            # if waittime<600:
+            #     waittime=int(waittime*1.5)
+
+    def finished(self):
+        filename=os.path.basename(self.runfile)
+        result=subprocess.run(f'squeue -u Paul.Ockenfuss -n {filename} --format "%.5t"',stdout=subprocess.PIPE, shell=True)
+        pattern = re.compile("\n[\s]*(R|PD)\n")
+        if pattern.search(result.stdout.decode('utf-8')):
+            return False
+        return True
 
 class EmptyRunner(RunController):
     def run(self, *args, **kwargs):
@@ -170,6 +190,7 @@ def main():
         collector=EmptyCollector()
     elif mode=='slurm':
         runner=SlurmRunner()
+        collector=UvspecCollector(inp.get("stdout", 'Options'), inp.get("stderr", 'Options'), inp.get("inputfile", 'Options'),inp.get("miscfiles", 'Options'), inp.get("out_values", 'Output'), variables, tied)
     elif mode=='read':
         runner=EmptyRunner()
         collector=EmptyCollector()
@@ -192,7 +213,7 @@ def main():
             taskid+=1
         if taskid==0 and not chunks_remaining:
             break
-        runstate['jobs']=str(taskid)
+        runstate['jobs']=str(taskid-1)
         runfile=runtemplate_handler.create(runstate, chunkid=chunkid)[0]
         if info>0:
             print(f'Running chunk {chunkid} with {taskid} jobs')
