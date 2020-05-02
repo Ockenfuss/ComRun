@@ -5,7 +5,7 @@ import itertools as it
 import jinja2 as jinja
 import os as os
 import subprocess
-from ComRun.Helperfunctions import append_ids
+from ComRun.Helperfunctions import append_ids, consume
 from ComRun.Collectors import UvspecCollector, EmptyCollector
 from collections import Iterable
 import re
@@ -157,13 +157,19 @@ def main():
     par.add_argument('infile')
     args=par.parse_args()
     def_opts={}
-    def_opts["Options"]={"idnumber":str(int(np.random.rand()*1e10)), "uvspec":"uvspec", "sep":",", "not_cartesian":"", "mode":"local","misctemplates":'',"miscfiles":"","info":"info", "slurmtemplate":"/project/meteo/work/Paul.Ockenfuss/Master/Simulation/Sourcecode/Tools/Templates/Slurm_Input_template.template"}
+    def_opts["Options"]={"idnumber":str(int(np.random.rand()*1e10)), "uvspec":"uvspec", "sep":",", "not_cartesian":"", "mode":"local","misctemplates":'',"miscfiles":"","info":"info", "slurmtemplate":"/project/meteo/work/Paul.Ockenfuss/Master/Simulation/Sourcecode/Tools/Templates/Slurm_Input_template.template", "chunkstart":"0", "append":"False"}
     inp=InputLogger.Input(args.infile,version=VERSION, def_opts=def_opts)
     inp.convert_array(str, "misctemplates", "Options", removeSpaces=True)
     inp.convert_array(str, "miscfiles", "Options", removeSpaces=True)
     inp.convert_array(str, "out_values","Output", removeSpaces=True)
     inp.convert_array(str, "not_cartesian", "Options", removeSpaces=True)
     inp.convert_type(int, 'chunksize', 'Options')
+    inp.convert_type(int, 'chunkstart', 'Options')
+    inp.convert_type(bool, 'append', 'Options')
+    infodict={'quiet':0, 'info':1, 'verbose':2}
+    info=infodict[inp.get('info', 'Options')]
+    if info >0:
+        inp.show_data()
     variables={}
     for var in inp.listKeys("Variables"):
         inp.convert_array(str, var,section="Variables", removeSpaces=False, sep=inp.get("sep", 'Options'))
@@ -172,11 +178,9 @@ def main():
     if not inp.get("not_cartesian",'Options'):
         tied=[]
     runstate=inp.options['Run']
-
+    outputfile=inp.get('outputfile', 'Options')
 
     mode=inp.get('mode', 'Options')
-    infodict={'quiet':0, 'info':1, 'verbose':2}
-    info=infodict[inp.get('info', 'Options')]
     misctemplates=inp.get('misctemplates', 'Options')
     intemplate=inp.get('intemplate', 'Options')
     template_handler=TemplateHandler(misctemplates, inp.get('miscfiles', 'Options'))
@@ -193,14 +197,20 @@ def main():
         collector=UvspecCollector(inp.get("stdout", 'Options'), inp.get("stderr", 'Options'), inp.get("inputfile", 'Options'),inp.get("miscfiles", 'Options'), inp.get("out_values", 'Output'), variables, tied)
     elif mode=='read':
         runner=EmptyRunner()
-        collector=EmptyCollector()
+        collector=UvspecCollector(inp.get("stdout", 'Options'), inp.get("stderr", 'Options'), inp.get("inputfile", 'Options'),inp.get("miscfiles", 'Options'), inp.get("out_values", 'Output'), variables, tied)
     
+    if inp.get('append', 'Options'):
+        collector.output.load_existing(outputfile)
+
     scheduler=Scheduler(variables, tied)
     chunks_remaining=True
-    chunkid=0
     chunksize=inp.get('chunksize', 'Options')
+    chunkstart=inp.get('chunkstart', 'Options')
     states_creation=scheduler.generate_state()
     states_reading=scheduler.generate_state()
+    chunkid=chunkstart
+    consume(states_creation, chunksize*chunkstart)
+    consume(states_reading, chunksize*chunkstart)
     while chunks_remaining:
         taskid=0
         while taskid<chunksize:
@@ -230,11 +240,11 @@ def main():
                 break
             collector.collect(majorstate, chunkid, taskid)
             taskid+=1
-        collector.output.save_snapshot(inp.get('outputfile', 'Options'))
+        collector.output.save_snapshot(outputfile)
         if mode=='local' or mode=='slurm':
             exe(inp.get("clean",'Options'))
         chunkid+=1
-    collector.save(inp.get('outputfile', 'Options'), inp, [intemplate]+misctemplates)
+    collector.save(outputfile, inp, [intemplate]+misctemplates)
     print(collector.output.data)
         # if chunkid==2:
         #     sys.exit()

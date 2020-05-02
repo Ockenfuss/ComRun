@@ -36,11 +36,17 @@ class Output(object):
         if not new.name in self.data:
             self.data[new.name]=new
         else:
-            temp=new.combine_first(self.data[new.name])# use combine_first because it allows for coordinate alignment and extends is necessary
+            temp=new.combine_first(self.data[new.name])# use combine_first because it allows for coordinate alignment and extends if necessary
             self.data=xr.merge([temp, self.data], compat='override')#now, merge the new data array in the full dataset
 
     def save_snapshot(self, savefile):
         self.data.to_netcdf(savefile)
+
+    def load_existing(self, filename):
+        new=xr.load_dataset(filename)
+        if not np.all([c in new.coords for c in self.data.coords]):
+            raise Exception(f'Not all necessary dimensions are present in {filename}!')
+        self.data=new
 
 
 
@@ -74,9 +80,6 @@ class EmptyCollector(Collector):
         super().__init__(None, None, None,None, None, {}, [])
     
     def collect(self, state, chunkid, taskid):
-        pass
-
-    def save(self, a1, a2, a3):
         pass
     
 class UvspecCollector(Collector):
@@ -126,7 +129,27 @@ class UvspecCollector(Collector):
         return result
 
     def get_radiance(self):
-        pass
+        basename=self.get_basename()
+        data=np.genfromtxt(basename+".rad.spc")
+        data=np.atleast_2d(data)
+        polarized=False
+        if len(data)>1:
+            if np.sum(data[0,:4]==data[1,:4])==4:#if the first two rows have equal coordinates, they represent different I,Q,U,V
+                polarized=True
+        rad_wvl=np.unique(data[:,0])
+        rad_ix=np.unique(data[:,1])
+        rad_iy=np.unique(data[:,2])
+        rad_iz=np.unique(data[:,3])
+        if polarized:
+            rad_pol=['I', 'Q', 'U', 'V']
+        else:
+            rad_pol=['I']
+        rad_space_shape=(len(rad_wvl), len(rad_ix), len(rad_iy), len(rad_iz), len(rad_pol))
+        radiance=np.reshape(data[:,4], rad_space_shape)
+        result=xr.DataArray(radiance, coords=[('rad_wvl', rad_wvl),('rad_ix', rad_ix),('rad_iy', rad_iy),('rad_iz', rad_iz),('rad_pol', rad_pol)])
+        result.name='radiance'
+        return result
+        
     def get_photons_second(self):
         pass
     def get_radiance_std(self):
