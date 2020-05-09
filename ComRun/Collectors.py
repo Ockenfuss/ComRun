@@ -74,12 +74,21 @@ class Collector(object):
 
     def save(self, savefile, inpLogger, templates=None):
         self.output.save(savefile, inpLogger, templates)
+    
+    def save_snapshot(self, savefile):
+        self.output.save_snapshot(savefile)
 
 class EmptyCollector(Collector):
     def __init__(self):
         super().__init__(None, None, None,None, None, {}, [])
     
     def collect(self, state, chunkid, taskid):
+        pass
+
+    def save(self, savefile, inpLogger, templates=None):
+        pass
+    
+    def save_snapshot(self, savefile):
         pass
     
 class UvspecCollector(Collector):
@@ -151,9 +160,30 @@ class UvspecCollector(Collector):
         return result
         
     def get_photons_second(self):
-        pass
+        raise(NotImplementedError)
+
     def get_radiance_std(self):
-        pass
+        basename=self.get_basename()
+        data=np.genfromtxt(basename+".rad.std.spc")
+        data=np.atleast_2d(data)
+        polarized=False
+        if len(data)>1:
+            if np.sum(data[0,:4]==data[1,:4])==4:#if the first two rows have equal coordinates, they represent different I,Q,U,V
+                polarized=True
+        rad_wvl=np.unique(data[:,0])
+        rad_ix=np.unique(data[:,1])
+        rad_iy=np.unique(data[:,2])
+        rad_iz=np.unique(data[:,3])
+        if polarized:
+            rad_pol=['I', 'Q', 'U', 'V']
+        else:
+            rad_pol=['I']
+        rad_space_shape=(len(rad_wvl), len(rad_ix), len(rad_iy), len(rad_iz), len(rad_pol))
+        radiance=np.reshape(data[:,4], rad_space_shape)
+        result=xr.DataArray(radiance, coords=[('rad_wvl', rad_wvl),('rad_ix', rad_ix),('rad_iy', rad_iy),('rad_iz', rad_iz),('rad_pol', rad_pol)])
+        result.name='radiance_std'
+        return result
+
     def get_radiance_dis(self):
         """Read radiance for the case of 'disort', which prints it to stdout rather than a .rad.spc file.
         """
@@ -270,6 +300,6 @@ class UvspecCollector(Collector):
         # output['dis_uavgup'][act_state]=dis_uavgup
 
     def get_mie_std(self):
-        pass
+        raise(NotImplementedError)
     
 

@@ -157,7 +157,7 @@ def main():
     par.add_argument('infile')
     args=par.parse_args()
     def_opts={}
-    def_opts["Options"]={"idnumber":str(int(np.random.rand()*1e10)), "uvspec":"uvspec", "sep":",", "not_cartesian":"", "mode":"local","misctemplates":'',"miscfiles":"","info":"info", "slurmtemplate":"/project/meteo/work/Paul.Ockenfuss/Master/Simulation/Sourcecode/Tools/Templates/Slurm_Input_template.template", "chunkstart":"0", "append":"False"}
+    def_opts["Options"]={"idnumber":str(int(np.random.rand()*1e10)), "uvspec":"uvspec", "sep":",", "not_cartesian":"", "mode":"local","misctemplates":'',"miscfiles":"","info":"info", "slurmtemplate":"/project/meteo/work/Paul.Ockenfuss/Master/Simulation/Sourcecode/Tools/Templates/Slurm_Input_template.template", "chunkstart":"0","chunksize":"1", "append":"False"}
     inp=InputLogger.Input(args.infile,version=VERSION, def_opts=def_opts)
     inp.convert_array(str, "misctemplates", "Options", removeSpaces=True)
     inp.convert_array(str, "miscfiles", "Options", removeSpaces=True)
@@ -179,6 +179,8 @@ def main():
         tied=[]
     runstate=inp.options['Run']
     outputfile=inp.get('outputfile', 'Options')
+    chunksize=inp.get('chunksize', 'Options')
+    chunkstart=inp.get('chunkstart', 'Options')
 
     mode=inp.get('mode', 'Options')
     misctemplates=inp.get('misctemplates', 'Options')
@@ -189,6 +191,8 @@ def main():
     if mode=='local':
         runner=LocalRunner()
         collector=UvspecCollector(inp.get("stdout", 'Options'), inp.get("stderr", 'Options'), inp.get("inputfile", 'Options'),inp.get("miscfiles", 'Options'), inp.get("out_values", 'Output'), variables, tied)
+        if chunksize!=1:
+            print("Warning: When running local, you probably want to set the chunksize to 1.")
     elif mode=='create':
         runner=EmptyRunner()
         collector=EmptyCollector()
@@ -204,8 +208,6 @@ def main():
 
     scheduler=Scheduler(variables, tied)
     chunks_remaining=True
-    chunksize=inp.get('chunksize', 'Options')
-    chunkstart=inp.get('chunkstart', 'Options')
     states_creation=scheduler.generate_state()
     states_reading=scheduler.generate_state()
     chunkid=chunkstart
@@ -240,7 +242,7 @@ def main():
                 break
             collector.collect(majorstate, chunkid, taskid)
             taskid+=1
-        collector.output.save_snapshot(outputfile)
+        collector.save_snapshot(outputfile)
         if mode=='local' or mode=='slurm':
             exe(inp.get("clean",'Options'))
         chunkid+=1
