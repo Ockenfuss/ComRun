@@ -1,4 +1,4 @@
-from ComRun.Collectors import Output
+from ComRun.Collectors import Output, UvspecCollector
 import xarray as xr
 import numpy.testing as npt
 import numpy as np
@@ -124,6 +124,8 @@ class OutputTest(ut.TestCase):
         self.assertCountEqual(out.data['time'].coords.keys(), ['state1', 'state2', 'type'])
         npt.assert_array_equal(out.data['time'].sel(state1=1, state2=4, type=['wall', 'user']).values, [0.1,0.2])
         npt.assert_array_equal(out.data['time'].sel(state1=1, state2=3, type=['wall', 'user']).values, [0.3, 0.4])
+
+
 
 if __name__=="__main__":
     test=OutputTest()

@@ -1,0 +1,17 @@
+data_files_path /project/meteo/work/Paul.Ockenfuss/Software/libRadtran/data
+
+
+rte_solver disort
+
+sza 0
+phi0 0
+phi 0
+umu 1.0
+zout TOA
+wavelength 600 610
+
+wc_file 1D /home/p/Paul.Ockenfuss/Scratch/Master/Simulation/Experiments/Disort/NKTable/Atmosphere/Run742598734_wcfile_A.dat
+wc_properties mie interpolate
+
+output_quantity reflectivity
+verbose

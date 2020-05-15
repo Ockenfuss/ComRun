@@ -2,6 +2,7 @@ import xarray as xr
 import re as reg
 import numpy as np
 from ComRun.Helperfunctions import append_ids
+import ComRun.UvspecExtractors as uvex
 import os
 
 
@@ -94,7 +95,7 @@ class EmptyCollector(Collector):
 class UvspecCollector(Collector):
     def __init__(self, stdout, stderr, infile,miscfiles, collection_keys, variables, tied=[]):
         super().__init__(stdout, stderr, infile, miscfiles, collection_keys, variables, tied=[])
-        self.extraction_functions={"time_all":self.get_time_all, "radiance": self.get_radiance, "photons_second": self.get_photons_second, "radiance_std": self.get_radiance_std, "radiance_dis": self.get_radiance_dis, "dis_std":self.get_dis_std, "mie_all":self.get_mie_std}
+        self.extraction_functions={"time_all":self.get_time_all, "radiance": self.get_radiance, "photons_second": self.get_photons_second, "radiance_std": self.get_radiance_std, "radiance_dis": self.get_radiance_dis, "dis_std":self.get_dis_std, "mie_all":self.get_mie_std, "wctau_dis":self.get_wctau_dis}
 
 
     def collect(self, cartesian_state, chunkid, taskid):
@@ -259,45 +260,14 @@ class UvspecCollector(Collector):
         result.name='standard_dis'
         return result
 
-        #Create dimension if necessary
-        # if not ('rad_wvl' in output.dims):
-        #     output.coords['rad_wvl']=('rad_wvl', rad_wvl)
-        # #create DataArray if necessary
-        # if not ('dis_edir' in output):
-        #     dims=tuple(np.append(list(act_state.keys()), ['rad_wvl']))
-        #     val_space_shape=tuple([output.dims[d] for d in dims])
-        #     output['dis_edir']=(dims, np.zeros(val_space_shape))
-        # output['dis_edir'][act_state]=dis_edir
-
-        # if not ('dis_edn' in output):
-        #     dims=tuple(np.append(list(act_state.keys()), ['rad_wvl']))
-        #     val_space_shape=tuple([output.dims[d] for d in dims])
-        #     output['dis_edn']=(dims, np.zeros(val_space_shape))
-        # output['dis_edn'][act_state]=dis_edn
-
-        # if not ('dis_eup' in output):
-        #     dims=tuple(np.append(list(act_state.keys()), ['rad_wvl']))
-        #     val_space_shape=tuple([output.dims[d] for d in dims])
-        #     output['dis_eup']=(dims, np.zeros(val_space_shape))
-        # output['dis_eup'][act_state]=dis_eup
-
-        # if not ('dis_uavgdir' in output):
-        #     dims=tuple(np.append(list(act_state.keys()), ['rad_wvl']))
-        #     val_space_shape=tuple([output.dims[d] for d in dims])
-        #     output['dis_uavgdir']=(dims, np.zeros(val_space_shape))
-        # output['dis_uavgdir'][act_state]=dis_uavgdir
-
-        # if not ('dis_uavgdn' in output):
-        #     dims=tuple(np.append(list(act_state.keys()), ['rad_wvl']))
-        #     val_space_shape=tuple([output.dims[d] for d in dims])
-        #     output['dis_uavgdn']=(dims, np.zeros(val_space_shape))
-        # output['dis_uavgdn'][act_state]=dis_uavgdn
-
-        # if not ('dis_uavgup' in output):
-        #     dims=tuple(np.append(list(act_state.keys()), ['rad_wvl']))
-        #     val_space_shape=tuple([output.dims[d] for d in dims])
-        #     output['dis_uavgup']=(dims, np.zeros(val_space_shape))
-        # output['dis_uavgup'][act_state]=dis_uavgup
+    def get_wctau_dis(self):
+        with open(self.stderrfile) as f:
+            result=uvex.get_wctau_dis_fromstream(f)
+        array=xr.DataArray(result[:,1:], coords=[('rad_wvl', result[:,0]),('tau_type', ['scat', 'abs'])])
+        array.name='wctau_dis'
+        array.attrs['long_name']='water cloud opt. thickness'
+        return array
+        
 
     def get_mie_std(self):
         raise(NotImplementedError)
