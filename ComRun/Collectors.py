@@ -5,6 +5,12 @@ from ComRun.Helperfunctions import append_ids
 import ComRun.UvspecExtractors as uvex
 import os
 
+class CoordinateError(Exception): #Derived from Exception class
+    def __init__(self, value): 
+        self.value = value 
+    def __str__(self): 
+        return(repr(self.value)) 
+
 
 class Output(object):
     def __init__(self, variables, tied=[]):
@@ -24,6 +30,13 @@ class Output(object):
             for var in group:
                 output.coords[var]=(group[0], variables[var])
         self.data=output
+        self.check_unique()
+
+    def check_unique(self):
+        for c in self.data.coords:
+            uniq, counts=np.unique(self.data.coords[c], return_counts=True)
+            if np.any(counts>1):
+                raise CoordinateError(f'Not all values are unique in coordinate {c}. Duplicates are {uniq[counts>1]}.')
 
     def add_data(self, new, state):
         """Add a new DataArray to the output. Existing values with matching coordinates are overwritten, non-existing coordinates are appended and nan's are introduced when necessary.
@@ -263,9 +276,11 @@ class UvspecCollector(Collector):
     def get_wctau_dis(self):
         with open(self.stderrfile) as f:
             result=uvex.get_wctau_dis_fromstream(f)
-        array=xr.DataArray(result[:,1:], coords=[('rad_wvl', result[:,0]),('tau_type', ['scat', 'abs'])])
+        array=xr.DataArray(result[:,1:], coords=[('rte_wvl', result[:,0]),('tau_type', ['scat', 'abs'])])
         array.name='wctau_dis'
         array.attrs['long_name']='water cloud opt. thickness'
+        array.rte_wvl.attrs['long_name']='internal wavelength support points'
+        array.rte_wvl.attrs['units']='nm'
         return array
         
 
