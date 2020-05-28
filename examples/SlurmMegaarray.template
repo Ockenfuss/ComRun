@@ -1,0 +1,36 @@
+#!/bin/bash -l
+#Nodelist not necessary here, only if you want to avoid certain nodes
+#SBATCH --exclude=met-ws-740m[01-21]
+#SBATCH --array=1-{{var.parallel_jobs}}
+#SBATCH --partition=cluster,met-ws
+#SBATCH --mem={{var.mem}}
+#SBATCH --time={{var.time}}
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+ 
+JOBS=$(({{var.jobs}}+1))
+PERTASK=$(($JOBS/{{var.parallel_jobs}}))
+REMAINDER=$(($JOBS%{{var.parallel_jobs}}))
+ID=$(($SLURM_ARRAY_TASK_ID-1))
+STARTNUM=$(($ID*$PERTASK))
+ENDNUM=$((($ID+1)*$PERTASK))
+if [[ $ID -eq $(({{var.parallel_jobs}}-1)) ]]
+then
+	ENDNUM=$(($ENDNUM+$REMAINDER))
+fi
+for (( run=$STARTNUM; run<=$ENDNUM-1; run++ )); do
+#   echo This is SLURM task $ID, run number $run
+    # perform the actual work
+    # Append "_chunk_task" to the general filenames of input, stdout, stderr
+    inputfile=$(echo '{{var.inputfile}}' | gawk '{match($0, "(^.*)\\.(.*$)", a); print a[1] "_{{var.chunk}}_'$run'." a[2]}')
+    stdout=$(echo '{{var.stdout}}' | gawk '{match($0, "(^.*)\\.(.*$)", a); print a[1] "_{{var.chunk}}_'$run'." a[2]}')
+    stderr=$(echo '{{var.stderr}}' | gawk '{match($0, "(^.*)\\.(.*$)", a); print a[1] "_{{var.chunk}}_'$run'." a[2]}')
+    # echo $inputfile
+    # echo $stderr
+    # echo $stdout
+    /usr/bin/time -f "###Runtime %e %U %S ###" uvspec <  $inputfile 2>$stderr 1>$stdout
+done
+
+
+
+

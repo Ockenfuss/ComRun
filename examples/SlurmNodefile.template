@@ -1,0 +1,20 @@
+#!/bin/bash -l
+#SBATCH --nodelist={{var.nodelist}}
+#SBATCH --array=0-{{var.jobs}}%{{var.parallel_jobs}}
+#SBATCH --partition=met-ws
+#SBATCH --mem={{var.mem}}
+#SBATCH --time={{var.time}}
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+ 
+# load modules
+ 
+# perform the actual work
+# Append "_chunk_task" to the general filenames of input, stdout, stderr
+inputfile=$(echo '{{var.inputfile}}' | gawk '{match($0, "(^.*)\\.(.*$)", a); print a[1] "_{{var.chunk}}_'$SLURM_ARRAY_TASK_ID'." a[2]}')
+stdout=$(echo '{{var.stdout}}' | gawk '{match($0, "(^.*)\\.(.*$)", a); print a[1] "_{{var.chunk}}_'$SLURM_ARRAY_TASK_ID'." a[2]}')
+stderr=$(echo '{{var.stderr}}' | gawk '{match($0, "(^.*)\\.(.*$)", a); print a[1] "_{{var.chunk}}_'$SLURM_ARRAY_TASK_ID'." a[2]}')
+# echo $inputfile
+# echo $stderr
+# echo $stdout
+/usr/bin/time -f "###Runtime %e %U %S ###" uvspec <  $inputfile 2>$stderr 1>$stdout
