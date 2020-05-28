@@ -108,7 +108,7 @@ class EmptyCollector(Collector):
 class UvspecCollector(Collector):
     def __init__(self, stdout, stderr, infile,miscfiles, collection_keys, variables, tied=[]):
         super().__init__(stdout, stderr, infile, miscfiles, collection_keys, variables, tied=[])
-        self.extraction_functions={"time_all":self.get_time_all, "radiance": self.get_radiance, "photons_second": self.get_photons_second, "radiance_std": self.get_radiance_std, "radiance_dis": self.get_radiance_dis, "dis_std":self.get_dis_std, "mie_all":self.get_mie_std, "wctau_dis":self.get_wctau_dis}
+        self.extraction_functions={"time_all":self.get_time_all, "radiance": self.get_radiance, "photons_second": self.get_photons_second, "radiance_std": self.get_radiance_std, "radiance_dis": self.get_radiance_dis, "dis_std":self.get_dis_std, "mie_all":self.get_mie_std, "wctau_dis":self.get_wctau_dis, "optprop_dis":self.get_optprop_dis}
 
 
     def collect(self, cartesian_state, chunkid, taskid):
@@ -210,13 +210,16 @@ class UvspecCollector(Collector):
         #The strategy is to locate the philines and derive the structure of the rest from these points
         stdout=self.open_file(self.stdoutfile)
         lines=stdout.split('\n')[:-1]
+        if len(lines)==0:
+            raise Exception(f'No lines found in {self.stdoutfile}!')
         data=[np.atleast_1d(np.fromstring(lines[i], sep=' ', dtype=float)) for i in range(len(lines))]
+        if len(data[0])!=7:#First line
+            raise Exception(f"Error: Number of field in first line in {self.stdoutfile} not 7!")
         rad_phi=data[1]
         n_phi=len(rad_phi)
         if n_phi==7:
             print("Error: output not unique if 7 phi angles are specified!")
         assert(n_phi!=7)
-        assert(len(data[0])==7)#First line
         data_lengths=np.array([len(data[i]) for i in range(len(data))])
         philines=np.where(data_lengths==n_phi)[0]
         rad_wvl=[data[i-1][0] for i in philines]
@@ -282,7 +285,18 @@ class UvspecCollector(Collector):
         array.rte_wvl.attrs['long_name']='internal wavelength support points'
         array.rte_wvl.attrs['units']='nm'
         return array
-        
+    
+    def get_optprop_dis(self):
+        with open(self.stderrfile) as f:
+            result=uvex.get_optprop_table_fromstream(f)
+        frames=[xr.DataArray(result[wvl][:,2:], coords=[('rte_z', result[wvl][:,1]),('opt_type', ['raytau', 'aerscat', 'aerabs', 'aerasy', 'wscat', 'wabs', 'wasy', 'iscat', 'iabs', 'iasy', 'iff', 'ig1', 'ig2', 'f','molabs'])]) for wvl in list(result.keys())]
+        array=xr.concat(frames, dim='rte_wvl')
+        array.coords['rte_wvl']=('rte_wvl', list(result.keys()))
+        array.name='optprop_dis'
+        array.attrs['long_name']='optical properties of various constituents'
+        array.rte_wvl.attrs['long_name']='internal wavelength support points'
+        array.rte_wvl.attrs['units']='nm'
+        return array
 
     def get_mie_std(self):
         raise(NotImplementedError)
