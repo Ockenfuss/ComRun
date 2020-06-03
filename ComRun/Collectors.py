@@ -33,7 +33,7 @@ class Output(object):
         self.check_unique()
 
     def check_unique(self):
-        for c in self.data.coords:
+        for c in self.data.dims:
             uniq, counts=np.unique(self.data.coords[c], return_counts=True)
             if np.any(counts>1):
                 raise CoordinateError(f'Not all values are unique in coordinate {c}. Duplicates are {uniq[counts>1]}.')
@@ -107,7 +107,7 @@ class EmptyCollector(Collector):
     
 class UvspecCollector(Collector):
     def __init__(self, stdout, stderr, infile,miscfiles, collection_keys, variables, tied=[]):
-        super().__init__(stdout, stderr, infile, miscfiles, collection_keys, variables, tied=[])
+        super().__init__(stdout, stderr, infile, miscfiles, collection_keys, variables, tied)
         self.extraction_functions={"time_all":self.get_time_all, "radiance": self.get_radiance, "photons_second": self.get_photons_second, "radiance_std": self.get_radiance_std, "radiance_dis": self.get_radiance_dis, "dis_std":self.get_dis_std, "mie_all":self.get_mie_std, "wctau_dis":self.get_wctau_dis, "optprop_dis":self.get_optprop_dis}
 
 

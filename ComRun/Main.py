@@ -157,7 +157,7 @@ def main():
     par.add_argument('infile')
     args=par.parse_args()
     def_opts={}
-    def_opts["Options"]={"idnumber":str(int(np.random.rand()*1e10)), "uvspec":"uvspec", "sep":",", "not_cartesian":"", "mode":"local","misctemplates":'',"miscfiles":"","info":"info", "slurmtemplate":"/project/meteo/work/Paul.Ockenfuss/Master/Simulation/Sourcecode/Tools/Templates/Slurm_Input_template.template", "chunkstart":"0","chunksize":"1", "append":"False"}
+    def_opts["Options"]={"idnumber":str(int(np.random.rand()*1e10)), "uvspec":"uvspec", "sep":",", "not_cartesian":"", "mode":"local","misctemplates":'',"miscfiles":"","info":"info", "chunkstart":"0","chunksize":"1", "append":"False"}
     inp=InputLogger.Input(args.infile,version=VERSION, def_opts=def_opts)
     inp.convert_array(str, "misctemplates", "Options", removeSpaces=True)
     inp.convert_array(str, "miscfiles", "Options", removeSpaces=True)

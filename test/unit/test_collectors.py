@@ -1,4 +1,4 @@
-from ComRun.Collectors import Output, UvspecCollector
+from ComRun.Collectors import Output, UvspecCollector, CoordinateError
 import xarray as xr
 import numpy.testing as npt
 import numpy as np
@@ -67,7 +67,6 @@ class OutputTest(ut.TestCase):
         new2=xr.DataArray(['c', 'd'], coords=[('wvl', [500,3000])])
         new2.name='radiance'
         out.add_data(new2, state2)
-        print(out.data)
         npt.assert_array_equal(out.data['radiance'].sel(state1='abc', state2=4, wvl=[400,500]).values, ['a','c'])
         npt.assert_array_equal(out.data['radiance'].sel(state1='abc', state2=4, wvl=[500,3000]).values, ['c','d'])
 
@@ -83,6 +82,14 @@ class OutputTest(ut.TestCase):
         self.assertCountEqual(list(out.data.coords), ['state1', 'state2', 'wvl'])
         self.assertCountEqual(list(out.data.dims), ['state1', 'wvl'])
         self.assertCountEqual(list(out.data['radiance'].dims), ['state1', 'wvl'])
+
+    def test_add_nonunique(self): #Coordinates for dimensions (i.e. not tied) must be unique
+        variables={'state1':[1,2], 'state2':[1,1]}
+        with self.assertRaises(CoordinateError):
+            out=Output(variables)
+        out=Output(variables,tied=[['state1', 'state2']]) #no error if the coordinate is not the main one
+
+
 
     def test_add_multiple_variables(self):
         variables={'state1':[1,2], 'state2':[3,4]}

@@ -10,7 +10,7 @@ umu 1.0
 zout TOA
 wavelength 600 610
 
-wc_file 1D /home/p/Paul.Ockenfuss/Scratch/Master/Simulation/Experiments/Disort/NKTable/Atmosphere/Run742598734_wcfile_A.dat
+wc_file 1D test/integration/fixtures/Wctau/wcfile_dis.dat
 wc_properties mie interpolate
 
 output_quantity reflectivity
