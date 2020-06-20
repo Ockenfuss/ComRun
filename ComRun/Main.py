@@ -147,6 +147,11 @@ class TemplateHandler(object):
         self.templates[name]=Template.fromFilepath(temppath, savepath)
         self.counter+=1
 
+class EmptyHandler(TemplateHandler):
+    def __init__(self):
+        super().__init__([],[])
+    def add_template(self, temppath, savepath, name=None):
+        raise Exception('Not possible to add template to EmptyHandler object!')
 def exe(command):
     proc=subprocess.Popen(command, shell=True)
     proc.wait()
@@ -200,6 +205,7 @@ def main():
         runner=SlurmRunner()
         collector=UvspecCollector(inp.get("stdout", 'Options'), inp.get("stderr", 'Options'), inp.get("inputfile", 'Options'),inp.get("miscfiles", 'Options'), inp.get("out_values", 'Output'), variables, tied)
     elif mode=='read':
+        template_handler=EmptyHandler()
         runner=EmptyRunner()
         collector=UvspecCollector(inp.get("stdout", 'Options'), inp.get("stderr", 'Options'), inp.get("inputfile", 'Options'),inp.get("miscfiles", 'Options'), inp.get("out_values", 'Output'), variables, tied)
     
@@ -223,17 +229,19 @@ def main():
                 break
             template_handler.create(state,chunkid=chunkid, taskid=taskid)
             taskid+=1
+            if info>1:
+                print(f'Current state is {state}')
         if taskid==0 and not chunks_remaining:
             break
         runstate['jobs']=str(taskid-1)
         runfile=runtemplate_handler.create(runstate, chunkid=chunkid)[0]
         if info>0:
             print(f'Running chunk {chunkid} with {taskid} jobs')
-            if info>1:
-                print(f'Current state is {state}')
         runner.run(runfile)
         runner.wait()
         taskid=0
+        if info>0:
+            print('Reading output...')
         while taskid<chunksize:
             try:
                 _, majorstate=next(states_reading)
@@ -242,6 +250,8 @@ def main():
                 break
             collector.collect(majorstate, chunkid, taskid)
             taskid+=1
+            if info>1:
+                print(f'Current state is {majorstate}')
         collector.save_snapshot(outputfile)
         if mode=='local' or mode=='slurm':
             exe(inp.get("clean",'Options'))
