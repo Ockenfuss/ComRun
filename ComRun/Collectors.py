@@ -50,8 +50,12 @@ class Output(object):
         if not new.name in self.data:
             self.data[new.name]=new
         else:
-            temp=new.combine_first(self.data[new.name])# use combine_first because it allows for coordinate alignment and extends if necessary
-            self.data=xr.merge([temp, self.data], compat='override')#now, merge the new data array in the full dataset
+            try:
+                self.data[new.name].loc[new.coords]=new
+            except KeyError:
+                temp=new.combine_first(self.data[new.name])# use combine_first because it allows for coordinate alignment and extends if necessary
+                self.data=xr.merge([temp, self.data], compat='override')#now, merge the new data array in the full dataset
+
 
     def save_snapshot(self, savefile):
         self.data.to_netcdf(savefile)
