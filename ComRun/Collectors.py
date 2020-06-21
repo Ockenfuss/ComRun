@@ -96,6 +96,14 @@ class Collector(object):
     def save_snapshot(self, savefile):
         self.output.save_snapshot(savefile)
 
+    def collect(self, cartesian_state, chunkid, taskid):
+        self.stdoutfile=append_ids(self.stdoutbase, chunkid, taskid)
+        self.stderrfile=append_ids(self.stderrbase, chunkid, taskid)
+        self.miscfiles=[append_ids(f, chunkid, taskid) for f in self.miscfilesbase]
+        self.infile=append_ids(self.infilebase,chunkid, taskid)
+        for key in self.collection_keys:
+            self.output.add_data(self.extraction_functions[key](), cartesian_state)
+
 class EmptyCollector(Collector):
     def __init__(self):
         super().__init__(None, None, None,None, None, {}, [])
@@ -114,14 +122,6 @@ class UvspecCollector(Collector):
         super().__init__(stdout, stderr, infile, miscfiles, collection_keys, variables, tied)
         self.extraction_functions={"time_all":self.get_time_all, "radiance": self.get_radiance, "photons_second": self.get_photons_second, "radiance_std": self.get_radiance_std, "radiance_dis": self.get_radiance_dis, "dis_std":self.get_dis_std, "mie_all":self.get_mie_std, "wctau_dis":self.get_wctau_dis, "optprop_dis":self.get_optprop_dis}
 
-
-    def collect(self, cartesian_state, chunkid, taskid):
-        self.stdoutfile=append_ids(self.stdoutbase, chunkid, taskid)
-        self.stderrfile=append_ids(self.stderrbase, chunkid, taskid)
-        self.miscfiles=[append_ids(f, chunkid, taskid) for f in self.miscfilesbase]
-        self.infile=append_ids(self.infilebase,chunkid, taskid)
-        for key in self.collection_keys:
-            self.output.add_data(self.extraction_functions[key](), cartesian_state)
 
     def get_basename(self):
         """Get the parameter value of "mc_basename" in a uvspec input file
