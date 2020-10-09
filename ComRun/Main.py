@@ -156,7 +156,7 @@ def exe(command):
     proc=subprocess.Popen(command, shell=True)
     proc.wait()
 def main():
-    from MyPython import Input as InputLogger
+    from inlog import Input as InputLogger
     import argparse
     par=argparse.ArgumentParser()
     par.add_argument('infile')
