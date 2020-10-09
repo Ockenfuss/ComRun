@@ -37,7 +37,8 @@ class SlurmRunner(RunController):
 
     def finished(self):
         filename=os.path.basename(self.runfile)
-        result=subprocess.run(f'squeue -u Paul.Ockenfuss -n {filename} --format "%.5t"',stdout=subprocess.PIPE, shell=True)
+        uid=os.getuid()
+        result=subprocess.run(f'squeue -u {uid} -n {filename} --format "%.5t"',stdout=subprocess.PIPE, shell=True)
         pattern = re.compile("\n[\s]*(R|PD)\n")
         if pattern.search(result.stdout.decode('utf-8')):
             return False
