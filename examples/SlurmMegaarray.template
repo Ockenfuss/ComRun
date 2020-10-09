@@ -1,6 +1,5 @@
 #!/bin/bash -l
 #Nodelist not necessary here, only if you want to avoid certain nodes
-#SBATCH --exclude=met-ws-740m[01-21]
 #SBATCH --array=1-{{var.parallel_jobs}}
 #SBATCH --partition=cluster,met-ws
 #SBATCH --mem={{var.mem}}
