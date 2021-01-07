@@ -7,10 +7,10 @@ import os as os
 import subprocess
 from ComRun.Helperfunctions import append_ids, consume
 from ComRun.Collectors import UvspecCollector, EmptyCollector
-from collections import Iterable
+from collections.abc import Iterable
 import re
 import time
-VERSION="1.0.0"
+VERSION="1.0.1"
 
 class RunController(object):
     pass
@@ -209,6 +209,8 @@ def main():
         template_handler=EmptyHandler()
         runner=EmptyRunner()
         collector=UvspecCollector(inp.get("stdout", 'Options'), inp.get("stderr", 'Options'), inp.get("inputfile", 'Options'),inp.get("miscfiles", 'Options'), inp.get("out_values", 'Output'), variables, tied)
+    else:
+        raise KeyError(f'{mode} not a valid keyword for "mode"!')
     
     if inp.get('append', 'Options'):
         collector.output.load_existing(outputfile)
