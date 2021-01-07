@@ -1,9 +1,11 @@
 import xarray as xr
 import re as reg
 import numpy as np
+from xarray.core.dataarray import DataArray
 from ComRun.Helperfunctions import append_ids
 import ComRun.UvspecExtractors as uvex
 import os
+import functools
 
 class CoordinateError(Exception): #Derived from Exception class
     def __init__(self, value): 
@@ -11,6 +13,23 @@ class CoordinateError(Exception): #Derived from Exception class
     def __str__(self): 
         return(repr(self.value)) 
 
+def extraction_func(func):
+    """A wrapper for extraction functions, which checks their output for correctness.
+    Extraction functions must return xr.DataArray types with meaningful content.
+
+    Args:
+        func (func): extraction function
+
+    Returns:
+        func: wrapped function, where the output is checked.
+    """
+    @functools.wraps(func)
+    def wrapper_checker(*args, **kwargs):
+        da=func(*args, **kwargs)
+        assert(isinstance(da, xr.DataArray))
+        assert(np.all([len(da[dim])>0 for dim in da.dims]))
+        return da
+    return wrapper_checker
 
 class Output(object):
     def __init__(self, variables, tied=[]):
@@ -122,7 +141,7 @@ class UvspecCollector(Collector):
         super().__init__(stdout, stderr, infile, miscfiles, collection_keys, variables, tied)
         self.extraction_functions={"time_all":self.get_time_all, "radiance": self.get_radiance, "photons_second": self.get_photons_second, "radiance_std": self.get_radiance_std, "radiance_dis": self.get_radiance_dis, "dis_std":self.get_dis_std, "mie_all":self.get_mie_std, "wctau_dis":self.get_wctau_dis, "optprop_dis":self.get_optprop_dis}
 
-
+    @extraction_func
     def get_basename(self):
         """Get the parameter value of "mc_basename" in a uvspec input file
     
@@ -140,6 +159,7 @@ class UvspecCollector(Collector):
         raise Exception(f"mc_basename not found in any of the files {self.infile}!")
 
 
+    @extraction_func
     def get_time_all(self):
         stderr=self.open_file(self.stderrfile)
         #find values in output
@@ -155,6 +175,7 @@ class UvspecCollector(Collector):
         result.values=m
         return result
 
+    @extraction_func
     def get_radiance(self):
         basename=self.get_basename()
         data=np.genfromtxt(basename+".rad.spc")
@@ -177,9 +198,11 @@ class UvspecCollector(Collector):
         result.name='radiance'
         return result
         
+    @extraction_func
     def get_photons_second(self):
         raise(NotImplementedError)
 
+    @extraction_func
     def get_radiance_std(self):
         basename=self.get_basename()
         data=np.genfromtxt(basename+".rad.std.spc")
@@ -202,6 +225,7 @@ class UvspecCollector(Collector):
         result.name='radiance_std'
         return result
 
+    @extraction_func
     def get_radiance_dis(self):
         """Read radiance for the case of 'disort', which prints it to stdout rather than a .rad.spc file.
         """
@@ -239,6 +263,7 @@ class UvspecCollector(Collector):
         result.name='radiance_dis'
         return result
 
+    @extraction_func
     def get_dis_std(self):
         """Read the seven standard output values from uvspec disort output"""
         stdout=self.open_file(self.stdoutfile)
@@ -280,6 +305,7 @@ class UvspecCollector(Collector):
         result.name='standard_dis'
         return result
 
+    @extraction_func
     def get_wctau_dis(self):
         with open(self.stderrfile) as f:
             result=uvex.get_wctau_dis_fromstream(f)
@@ -290,6 +316,7 @@ class UvspecCollector(Collector):
         array.rte_wvl.attrs['units']='nm'
         return array
     
+    @extraction_func
     def get_optprop_dis(self):
         with open(self.stderrfile) as f:
             result=uvex.get_optprop_table_fromstream(f)
@@ -302,6 +329,7 @@ class UvspecCollector(Collector):
         array.rte_wvl.attrs['units']='nm'
         return array
 
+    @extraction_func
     def get_mie_std(self):
         raise(NotImplementedError)
     
