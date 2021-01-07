@@ -271,7 +271,7 @@ class UvspecCollector(Collector):
         data=[np.fromstring(lines[i], sep=' ', dtype=float) for i in range(len(lines))]
         assert(len(data[0])==7)#First line
         if len(data)<4 or len(data[0])==len(data[1])==len(data[2]):#no radiance
-            n_wvl=len(data)-1
+            n_wvl=len(data)
             headlines=range(n_wvl)#Indices of the standard output line of disort
         else:
             rad_phi=data[1]

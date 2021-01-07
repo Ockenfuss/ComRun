@@ -70,7 +70,10 @@ class DisortTests(ut.TestCase):
         npt.assert_almost_equal(data.sel(opt_type='wscat', rte_z=1.0), checkresult[:,1])
         sub.run(f'make -C test/integration/temp/ cleanall', shell=True)
 
+def __main__():
+    dt=DisortTests()
 
+__main__()
         
 
         
