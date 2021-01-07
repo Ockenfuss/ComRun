@@ -7,7 +7,7 @@ If often occurs, that you have a computer simulation and want to explore its beh
 * Starts the simulations
 * Collects the results in a Netcdf file
 
-Although I used ComRun primarily together with 'uvspec' from the libRadtran radiative transfer library, the module is generic and could be used with any other simulation software as well.
+Although I used ComRun primarily together with 'uvspec' from the libRadtran radiative transfer library, the module is generic and should be applicable to any other simulation software as well.
 
 # Program flow
 In the example from the introduction, we have $5*10*10=500$ different input states, which correspond to 500 simulation **tasks** to be performed. In general, we group these tasks into bigger **chunks** and perform the following steps repeatedly for every chunk.
@@ -19,7 +19,7 @@ At first, input files are created for every input state. Therefore, an input tem
 The user must provide another JINJA template for a bash script. From this template, the program must be able to create a bash script, which runs all tasks in the current chunk.
 
 ## Collecting the results
-In order for ComRun to read arbitrary simulation output, the user must provide functions which read the required quantity and return it as an xarray DataArray. Inside these functions, the name of the inputfile and filenames containing stdout and stderr are provided. ComRun calls these functions for every task in the current chunk and merges their returned arrays together.
+In order for ComRun to read arbitrary simulation output, the user must provide functions which read the required quantity and return it as an xarray DataArray. Inside these functions, the name of the inputfile and filenames containing stdout and stderr are provided. ComRun calls these functions for every task in the current chunk and merges the returned arrays together.
 
 # Input Description
 ComRun is controlled by an .ini file, which is read using the python configparser module.
