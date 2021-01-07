@@ -1,3 +1,4 @@
 *.pyc
 randomseed
 .vscode/settings.json
+libRadtranData

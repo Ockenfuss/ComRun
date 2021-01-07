@@ -1,4 +1,4 @@
-data_files_path /project/meteo/work/Paul.Ockenfuss/Software/libRadtran/data
+data_files_path libRadtranData
 source solar
 
 sza {{var.sza}}
